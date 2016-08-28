@@ -1,26 +1,32 @@
-﻿//=======================================================================
-// Copyright Martin "quill18" Glaude 2015.
-//		http://quill18.com
-//=======================================================================
-
+#region License
+// ====================================================
+// Project Porcupine Copyright(C) 2016 Team Porcupine
+// This program comes with ABSOLUTELY NO WARRANTY; This is free software, 
+// and you are welcome to redistribute it under certain conditions; See 
+// file LICENSE, which is part of this source code package, for details.
+// ====================================================
+#endregion
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using System.Collections.Generic;
 
-public class TileSpriteController : MonoBehaviour
+public class TileSpriteController
 {
+    private Dictionary<Tile, GameObject> tileGameObjectMap;
 
-    Dictionary<Tile, GameObject> tileGameObjectMap;
-
-    World world
-    {
-        get { return WorldController.Instance.world; }
-    }
+    private World world;
 
     // Use this for initialization
-    void Start()
+    public TileSpriteController(World currnetWorld)
     {
+        world = currnetWorld;
+    }
+
+    public void Render() 
+    {
+        GameObject tileParent = new GameObject("Tiles");
+
         // Instantiate our dictionary that tracks which GameObject is rendering which Tile data.
         tileGameObjectMap = new Dictionary<Tile, GameObject>();
 
@@ -40,7 +46,7 @@ public class TileSpriteController : MonoBehaviour
 
                 tile_go.name = "Tile_" + x + "_" + y;
                 tile_go.transform.position = new Vector3(tile_data.X, tile_data.Y, 0);
-                tile_go.transform.SetParent(this.transform, true);
+                tile_go.transform.SetParent(tileParent.transform, true);
 
                 // Add a Sprite Renderer
                 // Add a default sprite for empty tiles.
@@ -54,15 +60,14 @@ public class TileSpriteController : MonoBehaviour
 
         // Register our callback so that our GameObject gets updated whenever
         // the tile's type changes.
-        world.cbTileChanged += OnTileChanged;
+        world.OnTileChanged += OnTileChanged;
     }
 
     // THIS IS AN EXAMPLE -- NOT CURRENTLY USED (and probably out of date)
-    void DestroyAllTileGameObjects()
+    private void DestroyAllTileGameObjects()
     {
         // This function might get called when we are changing floors/levels.
         // We need to destroy all visual **GameObjects** -- but not the actual tile data!
-
         while (tileGameObjectMap.Count > 0)
         {
             Tile tile_data = tileGameObjectMap.Keys.First();
@@ -72,10 +77,10 @@ public class TileSpriteController : MonoBehaviour
             tileGameObjectMap.Remove(tile_data);
 
             // Unregister the callback!
-            tile_data.cbTileChanged -= OnTileChanged;
+            tile_data.TileChanged -= OnTileChanged;
 
             // Destroy the visual GameObject
-            Destroy(tile_go);
+            GameObject.Destroy(tile_go);
         }
 
         // Presumably, after this function gets called, we'd be calling another
@@ -83,12 +88,11 @@ public class TileSpriteController : MonoBehaviour
     }
 
     // This function should be called automatically whenever a tile's data gets changed.
-    void OnTileChanged(Tile tile_data)
+    private void OnTileChanged(Tile tile_data)
     {
-
         if (tileGameObjectMap.ContainsKey(tile_data) == false)
         {
-            Debug.LogError("tileGameObjectMap doesn't contain the tile_data -- did you forget to add the tile to the dictionary? Or maybe forget to unregister a callback?");
+            Debug.ULogErrorChannel("TileSpriteController", "tileGameObjectMap doesn't contain the tile_data -- did you forget to add the tile to the dictionary? Or maybe forget to unregister a callback?");
             return;
         }
 
@@ -96,26 +100,10 @@ public class TileSpriteController : MonoBehaviour
 
         if (tile_go == null)
         {
-            Debug.LogError("tileGameObjectMap's returned GameObject is null -- did you forget to add the tile to the dictionary? Or maybe forget to unregister a callback?");
+            Debug.ULogErrorChannel("TileSpriteController", "tileGameObjectMap's returned GameObject is null -- did you forget to add the tile to the dictionary? Or maybe forget to unregister a callback?");
             return;
         }
 
-        if (tile_data.Type == TileType.Floor)
-        {
-            tile_go.GetComponent<SpriteRenderer>().sprite = SpriteManager.current.GetSprite("Tile", "Floor");
-        }
-        else if (tile_data.Type == TileType.Empty)
-        {
-            tile_go.GetComponent<SpriteRenderer>().sprite = SpriteManager.current.GetSprite("Tile", "Empty");
-        }
-        else
-        {
-            Debug.LogError("OnTileTypeChanged - Unrecognized tile type.");
-        }
-
-
+        tile_go.GetComponent<SpriteRenderer>().sprite = SpriteManager.current.GetSprite("Tile", tile_data.Type.Name);
     }
-
-
-
 }
